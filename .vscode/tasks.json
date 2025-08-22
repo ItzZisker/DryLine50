@@ -1,0 +1,48 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build and Run",
+      "type": "shell",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-NoLogo",
+          "-NoProfile",
+          "-Command",
+          "New-Item -ItemType Directory -Force -Path 'shaders','models'; ",
+          "Copy-Item -Recurse -Force '${workspaceFolder}/libs/syngine-0.1.0/bin/*' .; ",
+          "Copy-Item -Recurse -Force '${workspaceFolder}/libs/sdl-3.2.18/bin/*' .; ",
+          "Copy-Item -Recurse -Force '${workspaceFolder}/libs/assimp-6.0.2/build/bin/*' .; ",
+          "Copy-Item -Recurse -Force '${workspaceFolder}/shaders/*' shaders; ",
+          "Copy-Item -Recurse -Force '${workspaceFolder}/models/*' models; ",
+          "Copy-Item -Recurse -Force '${workspaceFolder}/pck/*' pck; ",
+          "ninja; ",
+          "Start-Process -NoNewWindow -Wait 'Game.exe'"
+        ]
+      },
+      "linux": {
+        "command": "bash",
+        "args": [
+          "-c",
+          "mkdir -p shaders models && ",
+          "cp -ru ${workspaceFolder}/libs/sdl-3.2.18/bin/* .",
+          "cp -ru ${workspaceFolder}/libs/assimp-6.0.2/build/bin/* .",
+          "cp -ru ${workspaceFolder}/shaders/* shaders/",
+          "cp -ru ${workspaceFolder}/models/* models/",
+          "cp -ru ${workspaceFolder}/pck/* pck/",
+          "echo \"\"",
+          "ninja && ./Game.exe"
+        ]
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/out/build/clang"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}

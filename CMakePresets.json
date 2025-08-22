@@ -1,0 +1,26 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "clang",
+      "displayName": "Clang",
+      "description": "Clang with Ninja",
+      "generator": "Ninja",
+      "binaryDir": "out/build/clang",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "out/install/clang",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_MAKE_PROGRAM": "ninja"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-clang",
+      "configurePreset": "clang",
+      "description": "Build with Clang and Ninja under MSYS2"
+    }
+  ]
+}
