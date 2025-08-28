@@ -1,6 +1,7 @@
 #include "GameManager.hpp"
 
 #include "Syngine/modules/Mesh.hpp"
+#include "Syngine/modules/MeshInstance.hpp"
 #include "Syngine/modules/ModelInstance.hpp"
 #include "input/InputProcessor.hpp"
 
@@ -62,47 +63,69 @@ public:
 };
 
 void GameManager::start(GameWindow *window) {
+    std::cout << "1\n";
     std::vector<glm::vec3> vertices;
     std::vector<GLuint> indices;
     Presets3D::pushVerticesCube(1.0f, vertices, indices);
     cube = new GLVertexElement<glm::vec3>(vertices, indices);
     cube->reserve();
 
+    std::cout << "2\n";
+
     batchShader.read("shaders/ps1batchVertex.glsl", "shaders/ps1batchFrag.glsl");
     batchShader.init();
+    std::cout << "3\n";
 
     screenShader.read("shaders/screenVertex.glsl", "shaders/screenFrag.glsl");
     screenShader.init();
+    std::cout << "4\n";
 
     sceneModel = new Model();
-    sceneModel->readAssimp({"models/outdoor lab/gltf/scene.gltf"});
+    AssimpReader reader = {"models/outdoor lab/test/scenetest.gltf"};
+    sceneModel->readAssimp(reader);
     sceneModel->load(syng::CacheApproach::Sequential);
 
     sceneModelInst = new ModelInstance(sceneModel);
+    // MeshInstance *cube034 = sceneModelInst->getMeshInstances()->get("Cube.034");
+
+    // std::cout << "cube034: " << cube034 << std::endl;
+
+
     //sceneModelInst->setDiscard("Cube.034", true);
     //sceneModelInst->getMeshInstances()->get("Cube.034")->addPosition({0.0f, 10.0f, 0.0f});
 
-    sceneModelInst->getMeshInstances()->forEach([&](const std::string& key, MeshInstance *mI){
-        std::cout << "IA: " << key << std::endl;
-        mI->addPosition({0.0f, 1.0f, 0.0f});
-        auto ptr =mI->getSelf();
-        if (ptr) {
-            std::cout << ptr << std::endl;
-            for (auto t : ptr->textures) {
-                std::cout << t.texture.path << std::endl;
-            }
-        } else {
-            mI->getChildren()->forEach([&](const std::string& key, MeshInstance *mI){
-                auto ptr =mI->getSelf();            
-                std::cout << ptr << std::endl;
-                for (auto t : ptr->textures) {
-                    std::cout << t.texture.path << std::endl;
-                }
-            });
-        }
-    });
+    // sceneModelInst->getMeshInstances()->forEach([&](const std::string& key, MeshInstance *mI){
+    //     std::cout << "IA: " << key << std::endl;
+        
+    //     if (key == "Plane") {
+    //         mI->getChildren()->forEach([&](const std::string &key, MeshInstance *mI){
+    //             Mesh* mesh = mI->getSelf();
+    //             for (auto vertex : mesh->getVertices()) {
+    //                 std::cout << "Vertex.pos=" << vertex.position[0] << "," << vertex.position[1] << "," << vertex.position[2] << " Vertex.texCoord=" << vertex.texCoords[0] << "," << vertex.texCoords[1] << std::endl;
+    //             }
+    //         });
+    //     }
+    //     //mI->addPosition({0.0f, 1.0f, 0.0f});
+    //     auto ptr =mI->getSelf();
+    //     if (ptr) {
+    //         std::cout << ptr << std::endl;
+    //         for (auto t : ptr->textures) {
+    //             std::cout << t.texture.path << std::endl;
+    //         }
+    //     } else {
+    //         mI->getChildren()->forEach([&](const std::string& key, MeshInstance *mI){
+    //             auto ptr =mI->getSelf();            
+    //             std::cout << ptr << std::endl;
+    //             for (auto t : ptr->textures) {
+    //                 std::cout << t.texture.path << std::endl;
+    //             }
+    //         });
+    //     }
+    // });
 
     scene = new Scene(&camera, batchShader, screenShader, Scene_T::of({1024, 768}));
+    scene->getBatchShader().use();
+    scene->getBatchShader().setVec2f("screenSize", 320, 240);
     scene->getBatchRenderTable()->add("sceneModel", sceneModelInst);
     DirLight nightlight = {
         {-0.86f, -1.0f, -0.97f},
@@ -111,6 +134,7 @@ void GameManager::start(GameWindow *window) {
         {0.6f, 0.6f, 0.85f}
     };
     scene->setDirectionalLight(nightlight);
+    scene->setPointLights({{{0.0f, 0.0f, 0.0f}}});
     scene->reloadShaders();
 
     mainFB = new Framebuffer(scene);
@@ -126,6 +150,7 @@ void GameManager::start(GameWindow *window) {
 
     window->getWindowRenderTable()->add("main", mainFB);
     window->addEventHandler(new MouseLookHandler());
+    window->addEventHandler(scene);
 }
 
 void GameManager::render(GameWindow *window) {

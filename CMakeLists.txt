@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(DryLine50 VERSION 0.1.0 LANGUAGES C CXX)
 
+find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # === Include headers ===
@@ -8,9 +10,9 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/include
     ${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/include
-    ${CMAKE_SOURCE_DIR}/libs/sdl-3.2.18/include
     ${CMAKE_SOURCE_DIR}/libs/glad-3.3/include
     ${CMAKE_SOURCE_DIR}/libs/stb-image
+    ${CMAKE_SOURCE_DIR}/libs/tinygltf
     ${CMAKE_SOURCE_DIR}/libs/assimp-6.0.2/include
     ${CMAKE_SOURCE_DIR}/libs/assimp-6.0.2/build/include
     ${CMAKE_SOURCE_DIR}/libs/bullet3-3.25/src
@@ -20,11 +22,19 @@ include_directories(
 )
 
 # === Link directories ===
-link_directories(
-    ${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/bin
-    ${CMAKE_SOURCE_DIR}/libs/sdl-3.2.18/lib
-    ${CMAKE_SOURCE_DIR}/libs/assimp-6.0.2/build/lib
-)
+if (WIN32)
+    link_directories(${CMAKE_SOURCE_DIR}/libs/assimp-6.0.2/build/lib)
+endif()
+
+# == SDL Support for both Windows/Linux Mac Soon ==
+set(SDL_ROOT "${CMAKE_SOURCE_DIR}/libs/sdl-3.2.18")
+if (WIN32)
+    include_directories(${SDL_ROOT}/windows/include)
+    link_directories(${SDL_ROOT}/windows/lib)
+elseif(UNIX AND NOT APPLE)
+    include_directories(${SDL_ROOT}/linux/include)
+    link_directories(${SDL_ROOT}/linux/bin)
+endif()
 
 # === ImGui sources ===
 set(IMGUI_SRC
@@ -56,9 +66,16 @@ add_executable(Game
     ${IMGUI_SRC}
 )
 
-# === Link libraries to executable ===
-target_link_libraries(Game PRIVATE
-    ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/static/libzstd_static.lib
-    Syng
-    ${common_libs}
-)
+if (WIN32)
+    link_directories(${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/bin)
+    target_link_libraries(Game PRIVATE
+        ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/static/libzstd_static.lib
+        ${common_libs}
+    )
+elseif (UNIX AND NOT APPLE)
+    target_link_libraries(Game PRIVATE ${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/bin/Syng.so)
+    target_link_libraries(Game PRIVATE
+        ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/staticlinux/libzstd.a
+        ${common_libs}
+    )
+endif()

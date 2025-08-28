@@ -26,12 +26,12 @@
         "args": [
           "-c",
           "mkdir -p shaders models && ",
-          "cp -ru ${workspaceFolder}/libs/sdl-3.2.18/bin/* .",
-          "cp -ru ${workspaceFolder}/libs/assimp-6.0.2/build/bin/* .",
-          "cp -ru ${workspaceFolder}/shaders/* shaders/",
-          "cp -ru ${workspaceFolder}/models/* models/",
-          "cp -ru ${workspaceFolder}/pck/* pck/",
-          "echo \"\"",
+          "cp -ru ${workspaceFolder}/libs/sdl-3.2.18/bin/* . &&",
+          "cp -ru ${workspaceFolder}/libs/assimp-6.0.2/build/bin/* . &&",
+          "cp -ru ${workspaceFolder}/shaders/* shaders/ &&",
+          "cp -ru ${workspaceFolder}/models/* models/ &&",
+          "cp -ru ${workspaceFolder}/pck/* pck/ &&",
+          "echo \"\" &&",
           "ninja && ./Game.exe"
         ]
       },
