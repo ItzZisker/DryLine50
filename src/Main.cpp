@@ -8,8 +8,16 @@ using namespace syng;
 int main() {
 	Concurrency::initMainThread();
 	GameWindow window("Test", {1024, 768});
-	window.addInitTask([&](GameWindow *window){ GameManager::start(window); });
-	window.addRenderTask([&](GameWindow *window){ GameManager::render(window); });
-	window.addCleanupTask([&](GameWindow *window){ GameManager::shutdown(window); });
+	window.addInitTask([&](GameWindow *window){ 
+		GameManager::start(window);
+		GameManager::startImGUI(window);
+	});
+	window.addRenderTask([&](GameWindow *window){
+		GameManager::render(window);
+		GameManager::renderImGUI(window);
+	});
+	window.addCleanupTask([&](GameWindow *window){
+		GameManager::shutdown(window);
+	});
 	return window.initLoop();
 }

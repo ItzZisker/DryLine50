@@ -11,13 +11,31 @@ struct DirLight {
 in vec3 Normal;
 in vec2 TexCoord;                  // smooth = perspective
 noperspective in vec2 affineTexCoord; // affine
+in vec3 WorldPos;
 
+uniform vec3  fogColor = vec3(0.5, 0.4, 0.3);
+uniform float fogStart = 10.0;
+uniform float fogEnd = 50.0;
+
+uniform vec3 cameraPos;
 uniform sampler2D texture_diffuse1;
 uniform float affineStrength = 0.1; // 0.0 = correct, 1.0 = PS1 affine
 
 uniform DirLight dirLight;
 
 out vec4 FragColor;
+
+float linearizeDepth(float d, float zNear, float zFar) {
+    return zNear * zFar / (zFar + d * (zNear - zFar));
+}
+
+float calculateFogFactor() {
+    float dist = length(WorldPos - cameraPos);
+    float fogRange = fogEnd - fogStart;
+    float fogDist = fogEnd - dist;
+    float fogFactor = fogDist / fogRange;
+    return clamp(fogFactor, 0.0, 1.0);
+}
 
 vec3 calculateDirectionalLight(DirLight light, vec3 normal, vec2 texCoords) {
     vec3 lightDir = normalize(-light.direction);
@@ -38,5 +56,8 @@ void main() {
     if (fragColor.a < 0.8)
         discard;
 
-    FragColor = vec4(calculateDirectionalLight(dirLight, Normal, TexCoord), fragColor.a);
+    vec3 outputColor = calculateDirectionalLight(dirLight, Normal, TexCoord);
+    vec3 fogOutColor = mix(fogColor, outputColor, calculateFogFactor());
+
+    FragColor = vec4(fogOutColor, fragColor.a);
 }

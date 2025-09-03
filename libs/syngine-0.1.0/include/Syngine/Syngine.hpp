@@ -20,7 +20,6 @@
 #include <SDL3/SDL_events.h>
 #include <glad/glad.h>
 
-#include <thread>
 #include <functional>
 #include <unordered_map>
 #include <vector>

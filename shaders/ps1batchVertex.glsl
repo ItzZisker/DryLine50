@@ -17,6 +17,7 @@ uniform vec2 screenSize = vec2(320.0, 240.0);
 out vec3 Normal;
 out vec2 TexCoord;
 noperspective out vec2 affineTexCoord; // affine
+out vec3 WorldPos; // Depth for fog
 
 void main() {
     vec4 clip = projection * view * model * vec4(aPos, 1.0);
@@ -28,7 +29,10 @@ void main() {
     vec2 snappedNDC = (screen / screenSize) * 2.0 - 1.0;
     gl_Position = vec4(snappedNDC * clip.w, clip.z, clip.w);
 
-    Normal = mat3(transpose(inverse(model))) * aNormal;
+    mat3 tiModel = mat3(transpose(inverse(model)));
+
+    WorldPos = vec3(model * vec4(aPos, 1.0));
+    Normal = tiModel * aNormal;
     TexCoord = aTexCoord;       // perspective version (default)
     affineTexCoord = aTexCoord; // affine version (noperspective)
 }

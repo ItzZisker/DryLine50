@@ -1,8 +1,10 @@
 #include "InputProcessor.hpp"
 
+#include "SDL3/SDL_scancode.h"
 #include "SDL3/SDL_video.h"
 #include "Syngine/modules/Camera.hpp"
 #include "Syngine/utils/GameUtils.hpp"
+#include "game/Player.hpp"
 #include <cmath>
 
 bool mouse_first;
@@ -50,34 +52,31 @@ void GameInput::onMouseLook(const SDL_Event& mouseEvent, syng::Camera& camera) {
     camera.setDirection(syng::GameUtils::directionOf(mouse_look_yaw, mouse_look_pitch));
 }
 
-void GameInput::updateKeyStates(double lastFrameTime, const bool* SDL_keyStates, SDL_Window *SDL_window, syng::Camera &camera) {
-    const float cameraSpeed = 4.5f * lastFrameTime;
+void GameInput::handleKeysMovement(const bool* SDL_keyStates, syng::Camera &camera, syng::BT_World *world, btRigidBody *player, float capsuleHeight, double lastFrameTime) {
 
-    glm::vec3 horizontalDirection(0.0f);
+    glm::vec3 horizontalDir(cos(glm::radians(mouse_look_yaw)), 0, sin(glm::radians(mouse_look_yaw)));
+    horizontalDir = glm::normalize(horizontalDir);
+    glm::vec3 rightDir = glm::normalize(glm::cross(horizontalDir, glm::vec3(0,1,0)));
 
-    horizontalDirection.x = cos(glm::radians(mouse_look_yaw));
-    horizontalDirection.z = sin(glm::radians(mouse_look_yaw));
+    glm::vec3 moveVel(0.0f);
+    if (SDL_keyStates[SDL_SCANCODE_W]) moveVel += horizontalDir;
+    if (SDL_keyStates[SDL_SCANCODE_S]) moveVel -= horizontalDir;
+    if (SDL_keyStates[SDL_SCANCODE_D]) moveVel += rightDir;
+    if (SDL_keyStates[SDL_SCANCODE_A]) moveVel -= rightDir;
 
-    glm::vec3 cameraPos = camera.getPosition();
-    glm::vec3 cameraUp = camera.getUp();
+    if (glm::length(moveVel) > 0.0f) {
+        moveVel = glm::normalize(moveVel) * 5.0f;
+    }
 
-    if (SDL_keyStates[SDL_SCANCODE_W])
-        cameraPos += cameraSpeed * horizontalDirection;
-    if (SDL_keyStates[SDL_SCANCODE_S])
-        cameraPos -= cameraSpeed * horizontalDirection;
+    btVector3 currentVel = player->getLinearVelocity();
+    currentVel.setX(moveVel.x);
+    currentVel.setZ(moveVel.z);
+    player->setLinearVelocity(currentVel);
 
-    if (SDL_keyStates[SDL_SCANCODE_A])
-        cameraPos -= glm::normalize(glm::cross(horizontalDirection, cameraUp)) * cameraSpeed;
-    if (SDL_keyStates[SDL_SCANCODE_D])
-        cameraPos += glm::normalize(glm::cross(horizontalDirection, cameraUp)) * cameraSpeed;
+    GamePlay::Player::skipStaircase(player, world->getDynamics(), moveVel, lastFrameTime, capsuleHeight);
+}
 
-    if (SDL_keyStates[SDL_SCANCODE_SPACE])
-        cameraPos += cameraSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
-    if (SDL_keyStates[SDL_SCANCODE_LSHIFT])
-        cameraPos -= cameraSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
-
-    camera.setPosition(cameraPos);
-
+void GameInput::handleKeysToggleMouseLook(const bool* SDL_keyStates, SDL_Window *SDL_window) {
     static bool escapePressedLastFrame = false;
     if (SDL_keyStates[SDL_SCANCODE_ESCAPE]) {
         if (!escapePressedLastFrame) {

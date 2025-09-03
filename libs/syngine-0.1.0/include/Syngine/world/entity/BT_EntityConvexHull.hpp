@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Syngine/Syngine.hpp"
+
 #ifdef USE_BULLET
 
 #include "Syngine/modules/MeshInstance.hpp"
@@ -6,7 +9,7 @@
 #include "Syngine/engine/RenderTable.hpp"
 #include "Syngine/world/World.hpp"
 #include "Syngine/world/entity/BT_Entity.hpp"
-#include "Syngine/world/WorldObject.hpp"
+#include "Syngine/world/Coordination.hpp"
 
 #include <btBulletDynamicsCommon.h>
 #include <Bullet3Common/b3Vector3.h>

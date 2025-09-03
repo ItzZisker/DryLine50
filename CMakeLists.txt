@@ -61,6 +61,7 @@ endif()
 add_executable(Game
     src/data/DataZSTD.cpp
     src/game/GameManager.cpp
+    src/game/Player.cpp
     src/input/InputProcessor.cpp
     src/Main.cpp
     ${IMGUI_SRC}
