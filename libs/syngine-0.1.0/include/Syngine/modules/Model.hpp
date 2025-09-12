@@ -56,6 +56,7 @@ class AssimpReader {
 private:
     std::filesystem::path path;
     std::vector<MeshTexture2D> cachedTextures;
+    std::vector<MetaDataMap> cachedMaterialProps;
 
     MeshKeyedMap processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4& parentTransform);
     Mesh* processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4& transform);
@@ -83,6 +84,7 @@ private:
 public:
     MeshKeyedMap meshes;
     std::unordered_map<std::string, MeshKeyedMap> meshGroups;
+    std::vector<MetaDataMap> materialPropsById;
 
     Model();
     ~Model();

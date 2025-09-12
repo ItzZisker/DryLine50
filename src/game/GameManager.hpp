@@ -6,8 +6,7 @@
 
 using namespace syng;
 
-namespace GameManager
-{
+namespace GameManager {
     BT_World *getWorld();
     btRigidBody *getPlayer();
 

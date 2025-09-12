@@ -10,6 +10,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #define MAX_BONE_INFLUENCE 4
@@ -51,10 +52,26 @@ struct MaterialProps {
     bool hasRoughness = true;
 };
 
+class M_Metadata {
+public:
+    const int type;
+
+    M_Metadata(int type, const char *data, int data_length);
+
+    using Value = std::variant<float, double, std::string, int, std::vector<char>>;
+    Value getValue() const;
+private:
+    std::vector<char> data_copy;
+    const int data_length;
+};
+
+using MetaDataMap = std::unordered_map<std::string, M_Metadata>;
+
 class Mesh : public GLVertexElement<Vertex> {
 private:
     glm::mat4 parentToNodeTransform;
     std::unordered_map<MeshTexture2D_T, GLuint> textures_fallback;
+    int materialId = -1;
 public:
     std::vector<MeshTexture2D> textures;
     MaterialProps material;
@@ -64,10 +81,12 @@ public:
 
     glm::mat4 getParentToNodeTransform();
     Coordination getParentToNodeCoords();
+    int getMaterialId();
 
     bool hasFallback(MeshTexture2D_T texType);
     void setFallbackTCB(MeshTexture2D_T texType, GLuint TCB);
     void setFallbackColor(MeshTexture2D_T texType, GLubyte pixel[4]);
+    void setMaterialId(int materialId);
 
     void render(Shader& shader, Screenbuffer screen, glm::mat4 transform);
     void init(CacheApproach::VRAM_Approach = CacheApproach::Sequential);

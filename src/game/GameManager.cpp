@@ -27,23 +27,21 @@
 #include "imgui_impl_sdl3.h"
 #include "input/InputProcessor.hpp"
 
-#include <iostream>
-#include <ostream>
 #include <vector>
 
-BT_World *world;
-BT_EntityTriangleMesh *sceneEntity;
-btRigidBody *playerBody;
+static BT_World *world;
+static BT_EntityTriangleMesh *sceneEntity;
+static btRigidBody *playerBody;
 
-ModelInstance *sceneModelInst;
-glm::vec3 fallbackColor = {0.5f, 0.4f, 0.3f};
-float gamma_value = 2.4f;
+static ModelInstance *sceneModelInst;
+static glm::vec3 fallbackColor = {0.5f, 0.4f, 0.3f};
+static float gamma_value = 2.4f;
 
-Scene *scene;
-Framebuffer *mainFB;
-Camera camera({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f});
+static Scene *scene;
+static Framebuffer *mainFB;
+static Camera camera({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f});
 
-Shader batchShader, screenShader;
+static Shader batchShader, screenShader;
 
 BT_World *GameManager::getWorld() {
     return world;
@@ -75,9 +73,9 @@ void GameManager::start(GameWindow *window) {
         {0.5f, 0.5f, 0.75f},
         {0.6f, 0.6f, 0.85f}
     };
-    nightlight.ambient *= 0.25f;
-    nightlight.diffuse *= 0.25f;
-    nightlight.specular *= 0.25f;
+    nightlight.ambient *= 0.3f;
+    nightlight.diffuse *= 0.3f;
+    nightlight.specular *= 0.3f;
     scene->setDirectionalLight(nightlight);
     scene->setPointLights({{{0.0f, 0.0f, 0.0f}}});
     scene->reloadShaders();
@@ -106,7 +104,7 @@ void GameManager::start(GameWindow *window) {
 
 void GameManager::render(GameWindow *window) {
     btVector3 position = playerBody->getWorldTransform().getOrigin();
-    glm::vec3 camPos = {position.x(), position.y() + 1.62f, position.z()};
+    glm::vec3 camPos = {position.x(), position.y() + 1.3f, position.z()};
     camera.setPosition(camPos);
     scene->setGamma(gamma_value);
     scene->getBatchShader().use();
@@ -114,11 +112,19 @@ void GameManager::render(GameWindow *window) {
     mainFB->setFallbackColor(fallbackColor);
 
     GameInput::handleKeysToggleMouseLook(SDL_GetKeyboardState(NULL), window->getSDLWindowPtr());
-    GameInput::handleKeysMovement(SDL_GetKeyboardState(NULL), camera, world, playerBody, 1.8f, window->getLastFrameTime());
+    GameInput::handleKeysMovement(SDL_GetKeyboardState(NULL), playerBody, 1.8f, window->getLastFrameTime());
 }
 
 void GameManager::shutdown(GameWindow *window) {
+    window->getWindowRenderTable()->remove("main");
+    scene->getBatchRenderTable()->remove("sceneModel");
+    delete scene;
     batchShader.disposeProgram();
+    screenShader.disposeProgram();
+    world->getDynamics()->removeRigidBody(sceneEntity->getBody());
+    world->getDynamics()->removeRigidBody(playerBody);
+    world->paused = true;
+    window->getWindowRenderTable()->remove("world");
 }
 
 void GameManager::startImGUI(GameWindow *window) {

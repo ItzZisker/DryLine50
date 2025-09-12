@@ -1,11 +1,13 @@
 #include "Syngine/Syngine.hpp"
 #include "Syngine/engine/Concurrency.hpp"
 
+#include "game/Sound.hpp"
 #include "game/GameManager.hpp"
 
 using namespace syng;
 
 int main() {
+	Sound::createContext();
 	Concurrency::initMainThread();
 	GameWindow window("Test", {1024, 768});
 	window.addInitTask([&](GameWindow *window){ 

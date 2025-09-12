@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/include
+    ${CMAKE_SOURCE_DIR}/libs/openal-1.24.3/include
     ${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/include
     ${CMAKE_SOURCE_DIR}/libs/glad-3.3/include
     ${CMAKE_SOURCE_DIR}/libs/stb-image
@@ -28,12 +29,15 @@ endif()
 
 # == SDL Support for both Windows/Linux Mac Soon ==
 set(SDL_ROOT "${CMAKE_SOURCE_DIR}/libs/sdl-3.2.18")
+set(OPENAL_ROOT "${CMAKE_SOURCE_DIR}/libs/openal-1.24.3")
+
 if (WIN32)
     include_directories(${SDL_ROOT}/windows/include)
     link_directories(${SDL_ROOT}/windows/lib)
 elseif(UNIX AND NOT APPLE)
     include_directories(${SDL_ROOT}/linux/include)
     link_directories(${SDL_ROOT}/linux/bin)
+    link_directories(${OPENAL_ROOT}/bin)
 endif()
 
 # === ImGui sources ===
@@ -60,6 +64,7 @@ endif()
 # === Add executable ===
 add_executable(Game
     src/data/DataZSTD.cpp
+    src/game/Sound.cpp
     src/game/GameManager.cpp
     src/game/Player.cpp
     src/input/InputProcessor.cpp
@@ -70,13 +75,14 @@ add_executable(Game
 if (WIN32)
     link_directories(${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/bin)
     target_link_libraries(Game PRIVATE
-        ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/static/libzstd_static.lib
+        ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/static/win32/libzstd_static.lib
         ${common_libs}
     )
 elseif (UNIX AND NOT APPLE)
-    target_link_libraries(Game PRIVATE ${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/bin/Syng.so)
+    target_link_libraries(Game PRIVATE ${CMAKE_SOURCE_DIR}/libs/syngine-0.1.0/bin/libSyng.so.0.1.0)
+    target_link_libraries(Game PRIVATE ${CMAKE_SOURCE_DIR}/libs/openal-1.24.3/bin/libopenal.so.1.24.3)
     target_link_libraries(Game PRIVATE
-        ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/staticlinux/libzstd.a
+        ${CMAKE_SOURCE_DIR}/libs/zstd-1.5.7/static/linux/libzstd.a
         ${common_libs}
     )
 endif()

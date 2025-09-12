@@ -10,11 +10,9 @@
 using namespace syng;
 
 namespace GamePlay {
-namespace Player {
-
-btRigidBody* createEntity(Coordination coords, float mass, float radius, float height);
-void skipStaircase(btRigidBody* body, btDynamicsWorld* world, const glm::vec3& velocity, float dt, float capsuleHeight);
-void applyVelocity(btRigidBody *playerBody, const glm::vec3& targetVelocity);
-
-}
+    namespace Player {
+        btRigidBody* createEntity(Coordination coords, float mass, float radius, float height);
+        void applyImpulse(btRigidBody *playerBody, const glm::vec3& targetVelocity);
+        void castFootstep();
+    };
 }
