@@ -7,6 +7,7 @@
 
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
+#include "Syngine/world/World.hpp"
 
 namespace GameInput {
     float getMouseLookYaw();
@@ -27,7 +28,7 @@ namespace GameInput {
     void onMouseLook(const SDL_Event& mouseEvent, syng::Camera &camera);
 
     void handleKeysToggleMouseLook(const bool* SDL_keyStates, SDL_Window *SDL_window);
-    void handleKeysMovement(const bool* SDL_keyStates, btRigidBody *player, float capsuleHeight, double lastFrameTime);
+    void handleKeysMovement(const bool* SDL_keyStates, btRigidBody *player, syng::BT_World *world, float capsuleHeight, double lastFrameTime);
 
     class MouseLookHandler : public syng::SDL_EventHandler {
     private:

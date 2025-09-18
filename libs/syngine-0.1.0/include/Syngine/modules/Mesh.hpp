@@ -60,6 +60,9 @@ public:
 
     using Value = std::variant<float, double, std::string, int, std::vector<char>>;
     Value getValue() const;
+
+    std::vector<char>& rawData();
+    int dataLength();
 private:
     std::vector<char> data_copy;
     const int data_length;
@@ -67,14 +70,33 @@ private:
 
 using MetaDataMap = std::unordered_map<std::string, M_Metadata>;
 
+class Material {
+private:
+    int ID = -1;
+    std::string name = "Default";
+public:
+    MaterialProps props = {};
+    MetaDataMap metadata_map;
+
+    Material() {}
+    Material(int id, std::string name, MaterialProps props, MetaDataMap metadata) : ID(id), name(name), props(props), metadata_map(metadata) {}
+
+    int getID() { return ID; }
+    std::string& getName() { return name; }
+};
+
+namespace MeshMaterial
+{
+static Material* Default = new Material();
+}
+
 class Mesh : public GLVertexElement<Vertex> {
 private:
     glm::mat4 parentToNodeTransform;
     std::unordered_map<MeshTexture2D_T, GLuint> textures_fallback;
-    int materialId = -1;
 public:
     std::vector<MeshTexture2D> textures;
-    MaterialProps material;
+    Material *material = MeshMaterial::Default;
 
     Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, glm::mat4 parentToNodeTransform);
     ~Mesh();
@@ -86,7 +108,6 @@ public:
     bool hasFallback(MeshTexture2D_T texType);
     void setFallbackTCB(MeshTexture2D_T texType, GLuint TCB);
     void setFallbackColor(MeshTexture2D_T texType, GLubyte pixel[4]);
-    void setMaterialId(int materialId);
 
     void render(Shader& shader, Screenbuffer screen, glm::mat4 transform);
     void init(CacheApproach::VRAM_Approach = CacheApproach::Sequential);

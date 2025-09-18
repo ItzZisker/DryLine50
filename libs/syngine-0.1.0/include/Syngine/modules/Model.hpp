@@ -56,7 +56,6 @@ class AssimpReader {
 private:
     std::filesystem::path path;
     std::vector<MeshTexture2D> cachedTextures;
-    std::vector<MetaDataMap> cachedMaterialProps;
 
     MeshKeyedMap processNode(aiNode *node, const aiScene *scene, const aiMatrix4x4& parentTransform);
     Mesh* processMesh(aiMesh *mesh, const aiScene *scene, const glm::mat4& transform);
@@ -80,11 +79,11 @@ public:
 class Model
 {
 private:
-    bool loaded = false;
+    bool uploaded = false;
 public:
     MeshKeyedMap meshes;
     std::unordered_map<std::string, MeshKeyedMap> meshGroups;
-    std::vector<MetaDataMap> materialPropsById;
+    std::vector<Material*> materialById;
 
     Model();
     ~Model();
@@ -97,8 +96,8 @@ public:
     void readAssimp(AssimpReader reader);
 #endif
 
-    bool isLoaded() { return this->loaded; };
-    void load(CacheApproach::VRAM_Approach approach = CacheApproach::Sequential);
+    bool isUploaded() { return this->uploaded; };
+    void uploadVertices(CacheApproach::VRAM_Approach approach = CacheApproach::Sequential);
     void groupMeshes();
 
     void pushTexture(const std::string& meshKey, MeshTexture2D texture);

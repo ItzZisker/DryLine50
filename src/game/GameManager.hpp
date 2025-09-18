@@ -1,12 +1,20 @@
 #pragma once
 
-#include "BulletDynamics/Dynamics/btRigidBody.h"
+#include "game/Sound.hpp"
+
 #include "Syngine/Syngine.hpp"
+#include "Syngine/modules/ModelInstance.hpp"
 #include "Syngine/world/World.hpp"
+
+#include "BulletDynamics/Dynamics/btRigidBody.h"
+
+#include <vector>
 
 using namespace syng;
 
 namespace GameManager {
+    std::vector<Sound::WavData> &getWavSteps(const std::string& key);
+    ModelInstance *getSceneColliderModelInst();
     BT_World *getWorld();
     btRigidBody *getPlayer();
 

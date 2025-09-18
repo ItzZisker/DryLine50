@@ -5,6 +5,8 @@
 
 #include "Syngine/modules/Camera.hpp"
 #include "Syngine/utils/GameUtils.hpp"
+#include "Syngine/world/World.hpp"
+#include "game/Player.hpp"
 
 #include <cmath>
 
@@ -53,7 +55,7 @@ void GameInput::onMouseLook(const SDL_Event& mouseEvent, syng::Camera& camera) {
     camera.setDirection(syng::GameUtils::directionOf(mouse_look_yaw, mouse_look_pitch));
 }
 
-void GameInput::handleKeysMovement(const bool* SDL_keyStates, btRigidBody *player, float capsuleHeight, double lastFrameTime) {
+void GameInput::handleKeysMovement(const bool* SDL_keyStates, btRigidBody *player, BT_World *world, float capsuleHeight, double lastFrameTime) {
     glm::vec3 horizontalDir(cos(glm::radians(mouse_look_yaw)), 0, sin(glm::radians(mouse_look_yaw)));
     horizontalDir = glm::normalize(horizontalDir);
     glm::vec3 rightDir = glm::normalize(glm::cross(horizontalDir, glm::vec3(0,1,0)));
@@ -66,6 +68,7 @@ void GameInput::handleKeysMovement(const bool* SDL_keyStates, btRigidBody *playe
 
     if (glm::length(moveVel) > 0.0f) {
         moveVel = glm::normalize(moveVel) * 5.0f;
+        GamePlay::Player::castFootstep(player, world, 1.4f);
     }
 
     btVector3 currentVel = player->getLinearVelocity();

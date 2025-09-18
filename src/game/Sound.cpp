@@ -1,5 +1,9 @@
 #include "Sound.hpp"
 
+#include "Syngine/engine/TaskQueue.hpp"
+#include "Syngine/serialization/DataSerializer.hpp"
+#include "Syngine/serialization/DataTemplates.hpp"
+
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alext.h>
@@ -10,15 +14,16 @@
 #include <iostream>
 #include <ostream>
 #include <random>
+#include <unordered_map>
 #include <vector>
 #include <fstream>
-#include <thread>
+
+static std::unordered_map<std::string, ALuint> gBuffers;
 
 static ALCdevice* gDevice = nullptr;
 static ALCcontext* gContext = nullptr;
 
 static std::atomic<bool> gFootstepRunning{false};
-static std::thread gFootstepThread;
 
 bool Sound::createContext(const ALCchar *devicename) {
     if (gDevice) {
@@ -63,6 +68,57 @@ void Sound::shutdown() {
     }
 }
 
+ALuint Sound::getALBuffer(const WavData &wav) {
+    if (gBuffers.find(wav.name) != gBuffers.end()) {
+        return gBuffers[wav.name];
+    }
+    ALuint buffer;
+    alGenBuffers(1, &buffer);
+    alBufferData(buffer, wav.format, wav.data.data(), wav.size, wav.freq);
+    gBuffers[wav.name] = buffer;
+    return buffer;
+}
+
+Sound::WavData Sound::loadWav(syng::DataDeserializer* buffer) {
+    syng::DataTemplates::push(buffer, "OpenAL Wav", PCK_HEADER_WAV);
+
+    std::string filename = syng::DataTemplates::read_string(buffer);
+    char riff[4]; buffer->read((uint8_t*) riff, 4);
+    buffer->skip(4);
+    char wave[4]; buffer->read((uint8_t*) wave, 4);
+
+    char fmt[4]; buffer->read((uint8_t*) fmt, 4);
+
+    uint32_t subchunk1Size; buffer->read(reinterpret_cast<uint8_t*>(&subchunk1Size), 4);
+    uint16_t audioFormat; buffer->read(reinterpret_cast<uint8_t*>(&audioFormat), 2);
+    uint16_t channels; buffer->read(reinterpret_cast<uint8_t*>(&channels), 2);
+    uint32_t sampleRate; buffer->read(reinterpret_cast<uint8_t*>(&sampleRate), 4);
+    buffer->skip(6);
+    uint16_t bitsPerSample; buffer->read(reinterpret_cast<uint8_t*>(&bitsPerSample), 2);
+
+    char dataHeader[4];
+    uint32_t dataSize;
+    do {
+        buffer->read((uint8_t*) dataHeader, 4);
+        buffer->read(reinterpret_cast<uint8_t*>(&dataSize), 4);
+        if(std::string(dataHeader, 4) != "data")
+            buffer->skip(dataSize);
+    } while (std::string(dataHeader,4) != "data");
+
+    WavData wav;
+    wav.name = filename;
+    wav.size = dataSize;
+    wav.freq = sampleRate;
+    wav.format = (channels == 1 ?
+                 (bitsPerSample == 8 ? AL_FORMAT_MONO8 : AL_FORMAT_MONO16) :
+                 (bitsPerSample == 8 ? AL_FORMAT_STEREO8 : AL_FORMAT_STEREO16));
+    wav.data.resize(dataSize);
+    buffer->read((uint8_t*) wav.data.data(), dataSize);
+
+    syng::DataTemplates::pop(buffer, "OpenAL Wav", PCK_FOOTER_WAV);
+    return wav;
+}
+
 Sound::WavData Sound::loadWav(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) throw std::runtime_error("Failed to open file: " + path.string());
@@ -89,6 +145,7 @@ Sound::WavData Sound::loadWav(const std::filesystem::path& path) {
     } while (std::string(dataHeader,4) != "data");
 
     WavData wav;
+    wav.name = path.filename().string();
     wav.size = dataSize;
     wav.freq = sampleRate;
     wav.format = (channels == 1 ?
@@ -99,28 +156,32 @@ Sound::WavData Sound::loadWav(const std::filesystem::path& path) {
     return wav;
 }
 
+void TQ_gClr(ALuint source) {
+    ALint state;
+    alGetSourcei(source, AL_SOURCE_STATE, &state);
+
+    if (state != AL_PLAYING) {
+        alDeleteSources(1, &source);
+    } else {
+        syng::TaskQueue::Instance().enqueue([source]() {
+            TQ_gClr(source);
+        });
+    }
+}
+
 void Sound::playWav(const WavData& wav, const glm::vec3& pos, const glm::vec3& vel) {
     if (!gDevice || !gContext) return;
 
-    ALuint buffer, source;
-    alGenBuffers(1, &buffer);
-    alBufferData(buffer, wav.format, wav.data.data(), wav.size, wav.freq);
-
+    ALuint source;
     alGenSources(1, &source);
-    alSourcei(source, AL_BUFFER, buffer);
+    alSourcei(source, AL_BUFFER, getALBuffer(wav));
     alSource3f(source, AL_POSITION, pos.x, pos.y, pos.z);
     alSource3f(source, AL_VELOCITY, vel.x, vel.y, vel.z);
     alSourcePlay(source);
 
-    std::thread([source, buffer]() {
-        ALint state = AL_PLAYING;
-        while (state == AL_PLAYING) {
-            alGetSourcei(source, AL_SOURCE_STATE, &state);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        alDeleteSources(1, &source);
-        alDeleteBuffers(1, &buffer);
-    }).detach();
+    syng::TaskQueue::Instance().enqueue([source]() {
+        TQ_gClr(source);
+    });
 }
 
 void Sound::setListenerPosition(const glm::vec3& pos) {
@@ -142,43 +203,45 @@ void Sound::setListenerVelocity(const glm::vec3& vel) {
     alListener3f(AL_VELOCITY, vel.x, vel.y, vel.z);
 }
 
-void Sound::Footsteps::begin(const std::vector<WavData>& steps, const glm::vec3& pos, const glm::vec3& vel) {
-    if (steps.empty() || gFootstepRunning) return;
-
-    gFootstepRunning = true;
-    gFootstepThread = std::thread([steps, pos, vel]() {
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<size_t> dist(0, steps.size() - 1);
-
-        while (gFootstepRunning) {
-            const WavData& wav = steps[dist(rng)];
-
-            ALuint buffer, source;
-            alGenBuffers(1, &buffer);
-            alBufferData(buffer, wav.format, wav.data.data(), wav.size, wav.freq);
-
-            alGenSources(1, &source);
-            alSourcei(source, AL_BUFFER, buffer);
-            alSource3f(source, AL_POSITION, pos.x, pos.y, pos.z);
-            alSource3f(source, AL_VELOCITY, vel.x, vel.y, vel.z);
-            alSourcePlay(source);
-
-            ALint state = AL_PLAYING;
-            while (state == AL_PLAYING && gFootstepRunning) {
-                alGetSourcei(source, AL_SOURCE_STATE, &state);
-                std::this_thread::sleep_for(std::chrono::milliseconds(30));
-            }
-
-            alDeleteSources(1, &source);
-            alDeleteBuffers(1, &buffer);
-
-            if (gFootstepRunning) std::this_thread::sleep_for(std::chrono::milliseconds(120));
-        }
-    });
+bool Sound::Footsteps::isPlaying() {
+    return gFootstepRunning;
 }
 
 void Sound::Footsteps::end() {
-    if (!gFootstepRunning) return;
+    std::cout << gFootstepRunning << std::endl;
     gFootstepRunning = false;
-    if (gFootstepThread.joinable()) gFootstepThread.join();
+}
+
+void TQ_gStepClr(ALuint source) {
+    ALint state;
+    alGetSourcei(source, AL_SOURCE_STATE, &state);
+
+    if (state != AL_PLAYING || !gFootstepRunning) {
+        alDeleteSources(1, &source);
+        gFootstepRunning = false;
+    } else {
+        syng::TaskQueue::Instance().enqueue([source]() {
+            TQ_gStepClr(source);
+        });
+    }
+}
+
+void Sound::Footsteps::begin(const std::vector<WavData>& steps, const glm::vec3& pos, const glm::vec3& vel) {
+    if (gFootstepRunning || steps.empty() || !gDevice || !gContext) return;
+
+    static std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<size_t> dist(0, steps.size() - 1);
+
+    ALuint source;
+    alGenSources(1, &source);
+
+    alSourcei(source, AL_BUFFER, getALBuffer(steps[dist(rng)]));
+    alSource3f(source, AL_POSITION, pos.x, pos.y, pos.z);
+    alSource3f(source, AL_VELOCITY, vel.x, vel.y, vel.z);
+    alSourcePlay(source);
+    gFootstepRunning = true;
+
+    syng::TaskQueue::Instance().enqueue([source]() {
+        TQ_gStepClr(source);
+    });
 }

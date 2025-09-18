@@ -195,7 +195,7 @@
 		},
 		{
 			"mesh":6,
-			"name":"Plane.023",
+			"name":"ground",
 			"translation":[
 				2.4255259037017822,
 				0.7956730127334595,
@@ -1664,7 +1664,7 @@
 		},
 		{
 			"doubleSided":true,
-			"name":"white concrete",
+			"name":"Metal_white concrete",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":2
@@ -1774,7 +1774,7 @@
 		},
 		{
 			"doubleSided":true,
-			"name":"Material.002",
+			"name":"Rock_2",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":10
@@ -1785,7 +1785,7 @@
 		},
 		{
 			"doubleSided":true,
-			"name":"ground",
+			"name":"Sand_0",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":11
@@ -1806,7 +1806,7 @@
 					"sheenRoughnessFactor":0.5
 				}
 			},
-			"name":"road",
+			"name":"Road_1",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":12
@@ -1826,7 +1826,7 @@
 					"sheenRoughnessFactor":0.5
 				}
 			},
-			"name":"Material",
+			"name":"Road_0",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":13
@@ -1965,7 +1965,7 @@
 		},
 		{
 			"doubleSided":true,
-			"name":"antena",
+			"name":"Metal_antena",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":21
@@ -1987,7 +1987,7 @@
 		},
 		{
 			"doubleSided":true,
-			"name":"door sign",
+			"name":"Metal_door sign",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":23
@@ -2008,7 +2008,7 @@
 					"sheenRoughnessFactor":0.5
 				}
 			},
-			"name":"rock.001",
+			"name":"Rock_0",
 			"pbrMetallicRoughness":{
 				"baseColorTexture":{
 					"index":24
