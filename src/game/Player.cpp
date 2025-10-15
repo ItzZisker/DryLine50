@@ -16,8 +16,6 @@
 #include "game/Sound.hpp"
 
 #include <glm/glm.hpp>
-#include <iostream>
-#include <ostream>
 
 using namespace syng;
 using namespace GamePlay;

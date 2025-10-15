@@ -1,13 +1,15 @@
 #include "GameManager.hpp"
 
-#include "LinearMath/btVector3.h"
 #include "game/Player.hpp"
+#include "game/Sound.hpp"
 
 #include "SDL3/SDL_keyboard.h"
 
 #include "Syngine/Syngine.hpp"
 #include "Syngine/engine/RenderTable.hpp"
+#include "Syngine/modules/BatchRenderer.hpp"
 #include "Syngine/modules/Framebuffer.hpp"
+#include "Syngine/modules/Presets.hpp"
 #include "Syngine/modules/Mesh.hpp"
 #include "Syngine/modules/Model.hpp"
 #include "Syngine/modules/ModelInstance.hpp"
@@ -20,8 +22,8 @@
 
 #include "BulletCollision/BroadphaseCollision/btDispatcher.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
+#include "LinearMath/btVector3.h"
 
-#include "game/Sound.hpp"
 #include "glm/fwd.hpp"
 
 #include "imgui.h"
@@ -29,7 +31,6 @@
 #include "imgui_impl_sdl3.h"
 #include "input/InputProcessor.hpp"
 
-#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -40,8 +41,17 @@ static BT_World *world;
 static BT_EntityTriangleMesh *sceneEntity;
 static btRigidBody *playerBody;
 
+static Model *sceneColliderModel;
+static Model *sceneModel;
+
 static ModelInstance *sceneColliderModelInst;
 static ModelInstance *sceneModelInst;
+
+static ModelBatchRenderer *modelBatch;
+
+static GameManager::GameState state = GameManager::State_Menu;
+
+static Mesh2D *crosshair;
 
 static glm::vec3 fallbackColor = {0.5f, 0.4f, 0.3f};
 static float gamma_value = 2.4f;
@@ -50,13 +60,45 @@ static Scene *scene;
 static Framebuffer *mainFB;
 static Camera camera({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f});
 
-static Shader batchShader, screenShader;
+static Shader batchShader, batch2DShader, screenShader;
+
+GameManager::ShaderRenderable_Task::ShaderRenderable_Task(
+    std::function<void(Shader& shader, Screenbuffer screen)> func
+) : func(func) {}
+
+void GameManager::ShaderRenderable_Task::render(Shader& shader, Screenbuffer screen) {
+    this->func(shader, screen);
+}
+
+GameManager::GameState getState() {
+    return state;
+}
+
+void GameManager::setState(GameState _state) {
+    switch (_state) {
+        case State_Menu:
+
+        break;
+        case State_OutView:
+        
+        break;
+        case State_Interior_0:
+        break;
+        case State_Interior_1:
+        break;
+    }
+    state = _state;
+}
 
 std::vector<Sound::WavData> &GameManager::getWavSteps(const std::string& mat_name) {
     std::string key = "";
 
-    if (mat_name.rfind("Road", 0) == 0) {
-        key = "Road";
+    static std::vector<std::string> knownNames = {"Road", "Sand", "Rock", "Metal"};
+    for (auto knownName : knownNames) {
+        if (mat_name.rfind(knownName, 0) == 0) {
+            key = knownName;
+            break;
+        }
     }
     if (wavSteps.find(key) != wavSteps.end()) {
         return wavSteps[key];
@@ -80,36 +122,59 @@ btRigidBody *GameManager::getPlayer() {
 
 void GameManager::start(GameWindow *window) {
     std::vector<Sound::WavData> road_steps;
-
     road_steps.push_back(Sound::loadWav("sounds/166509__yoyodaman234__concrete-footstep-1.wav"));
     road_steps.push_back(Sound::loadWav("sounds/166508__yoyodaman234__concrete-footstep-2.wav"));
     road_steps.push_back(Sound::loadWav("sounds/166507__yoyodaman234__concrete-footstep-3.wav"));
     road_steps.push_back(Sound::loadWav("sounds/166506__yoyodaman234__concrete-footstep-4.wav"));
+    wavSteps["Road"] = wavSteps["Rock"] = road_steps;
 
-    wavSteps["Road"] = road_steps;
+    std::vector<Sound::WavData> sand_steps;
+    sand_steps.push_back(Sound::loadWav("sounds/166511__yoyodaman234__dirtgravel-footstep-1.wav"));
+    sand_steps.push_back(Sound::loadWav("sounds/223154__yoyodaman234__dirtgravel-footstep-3.wav"));
+    wavSteps["Sand"] = sand_steps;
+
+    std::vector<Sound::WavData> metal_steps;
+    metal_steps.push_back(Sound::loadWav("sounds/421134__giocosound__footstep_metal_1.wav"));
+    metal_steps.push_back(Sound::loadWav("sounds/421137__giocosound__footstep_metal_4.wav"));
+    metal_steps.push_back(Sound::loadWav("sounds/421136__giocosound__footstep_metal_5.wav"));
+    metal_steps.push_back(Sound::loadWav("sounds/421133__giocosound__footstep_metal_2.wav"));
+    wavSteps["Metal"] = metal_steps;
 
     batchShader.read("shaders/ps1batchVertex.glsl", "shaders/ps1batchFrag.glsl");
     batchShader.init();
+
+    batch2DShader.read("shaders/batch2DVertex.glsl", "shaders/batch2DFrag.glsl");
+    batch2DShader.init();
  
     screenShader.read("shaders/screenVertex.glsl", "shaders/screenFrag.glsl");
     screenShader.init();
 
-    Model *sceneModel = new Model();
-    std::cout << "read 0\n";
+    Vertex2D min = {{0, 0}, {0.0f, 0.0f}};
+    Vertex2D max = {{0.005f, 0.005f}, {1.0f, 1.0f}};
+    crosshair = Presets2D::newMeshQuad(min, max, 0);
+
+    GLubyte color[] = {255, 255, 255, 255};
+    crosshair->setFallbackColor(color);
+    crosshair->init();
+
+    sceneModel = new Model();
     sceneModel->readAssimp({"models/outdoor lab/test/scenetest.gltf"});
-    std::cout << "read 1\n";
     sceneModel->uploadVertices(syng::CacheApproach::Interleaved);
     sceneModelInst = new ModelInstance(sceneModel);
 
-    Model *sceneColliderModel = new Model();
+    sceneColliderModel = new Model();
     sceneColliderModel->readAssimp({"models/outdoor lab/test_collider/sceneCollider.gltf"});
     sceneColliderModel->groupMeshes();
     sceneColliderModelInst = new ModelInstance(sceneColliderModel);
 
     scene = new Scene(&camera, batchShader, screenShader, Scene_T::of({1024, 768}));
     scene->getBatchShader().use();
-    scene->getBatchShader().setVec2f("screenSize", 320, 240);
-    scene->getBatchRenderTable()->add("sceneModel", sceneModelInst);
+    scene->getBatchShader().setVec2f("screenSize", 480, 360);
+
+    modelBatch = new ModelBatchRenderer(scene);
+    modelBatch->add("sceneModel", sceneModelInst);
+    scene->getBatchRenderTable()->add("modelBatch", modelBatch);
+
     DirLight noonLight = {
         {0.86f, -1.0f, 0.97f},
         {0.5f, 0.5f, 0.5f},
@@ -127,14 +192,18 @@ void GameManager::start(GameWindow *window) {
     mainFB->setFallbackColor({0.5f, 0.5f, 0.2f});
     mainFB->setTCBFiltering(GL_NEAREST);
     mainFB->getRenderTable()->add("scene", scene);
-    mainFB->create(480, 240, true);
+    mainFB->getRenderTable()->add("crosshair", new ShaderRenderable_Task([](Shader& shader, Screenbuffer screen){
+        crosshair->render(batch2DShader, *mainFB, glm::mat4(1.0f));
+    }));
+    mainFB->create(480, 360, true);
     
     sceneEntity = new BT_EntityTriangleMesh(sceneColliderModelInst);
     sceneEntity->load();
 
     world = new BT_World(0, "World");
 
-    Coordination playerPos = {{0.0f, 2.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
+    Coordination playerPos = {{0.0f, 2.0f, 8.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}};
+    camera.setDirection(playerPos.getDirection());
     world->getDynamics()->addRigidBody(playerBody = GamePlay::Player::createEntity(playerPos, 40.0f, 0.35f, 1.8f));
     world->getDynamics()->addRigidBody(sceneEntity->getBody());
     world->paused = false;
@@ -143,6 +212,8 @@ void GameManager::start(GameWindow *window) {
     window->getWindowRenderTable()->add("world", world);
     window->addEventHandler(new GameInput::MouseLookHandler(camera));
     window->addEventHandler(scene);
+
+    SDL_GL_SetSwapInterval(0);
 }
 
 void GameManager::render(GameWindow *window) {

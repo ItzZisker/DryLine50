@@ -10,12 +10,12 @@
 
 #include <cmath>
 
-bool mouse_first;
-bool mouse_captured = false;
-float mouse_sens = 0.1f;
-float mouse_look_yaw = 90.0f;
-float mouse_look_pitch = 0.0f;
-double lastX, lastY;
+static bool mouse_first;
+static bool mouse_captured = false;
+static float mouse_sens = 0.1f;
+static float mouse_look_yaw = 90.0f;
+static float mouse_look_pitch = 0.0f;
+static double lastX = 0.0, lastY = 0.0;
 
 float GameInput::getMouseLookYaw() { return mouse_look_yaw; }
 float GameInput::getMouseLookPitch() { return mouse_look_pitch; }
@@ -68,7 +68,7 @@ void GameInput::handleKeysMovement(const bool* SDL_keyStates, btRigidBody *playe
 
     if (glm::length(moveVel) > 0.0f) {
         moveVel = glm::normalize(moveVel) * 5.0f;
-        GamePlay::Player::castFootstep(player, world, 1.4f);
+        GamePlay::Player::castFootstep(player, world, 1.5f);
     }
 
     btVector3 currentVel = player->getLinearVelocity();
